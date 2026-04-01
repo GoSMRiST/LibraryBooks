@@ -7,6 +7,6 @@ type BookCreateDTO struct {
 
 type BookResponseDTO struct {
 	ID     int    `json:"id"`
-	Title  string `json:"title"`
 	Author string `json:"author"`
+	Title  string `json:"title"`
 }

@@ -2,41 +2,40 @@ package grpc
 
 import (
 	"2/internal/core"
-	grpcserv "2/internal/transport/grpc/book"
+	grpcproto "2/internal/transport/grpc"
 	"context"
-	"fmt"
 	"google.golang.org/grpc"
 	"log/slog"
 	"net"
 )
 
-type App struct {
+type GrpcBookApp struct {
 	log        *slog.Logger
 	gRPCServer *grpc.Server
-	port       int
+	port       string
 }
 
 type BookService interface {
 	CheckAvailabilityByAuthorTitle(ctx context.Context, request *core.CheckAvailabilityRequest) (*core.CheckAvailabilityResponse, error)
 }
 
-func New(log *slog.Logger, port int, bookService BookService) *App {
+func NewGrpcBookApp(log *slog.Logger, port string, bookService BookService) *GrpcBookApp {
 	gRPCServer := grpc.NewServer()
 
-	grpcserv.NewServer(gRPCServer, bookService)
-	return &App{log: log, gRPCServer: gRPCServer, port: port}
+	grpcproto.NewServer(gRPCServer, bookService)
+	return &GrpcBookApp{log: log, gRPCServer: gRPCServer, port: port}
 }
 
-func (app *App) MustRun() {
+func (app *GrpcBookApp) MustRun() {
 	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }
 
-func (app *App) Run() error {
+func (app *GrpcBookApp) Run() error {
 	log := app.log
 
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", app.port))
+	l, err := net.Listen("tcp", ":"+app.port)
 	if err != nil {
 		return err
 	}
@@ -50,10 +49,11 @@ func (app *App) Run() error {
 	return nil
 }
 
-func (app *App) Stop() {
-	log := app.log
+func (app *GrpcBookApp) Stop() {
+
+	app.log.Info("Stopping gRPC server on port %d", app.port)
 
 	app.gRPCServer.GracefulStop()
 
-	log.Info("Stopping gRPC server on port %d", app.port)
+	app.log.Info("Stopped gRPC server on port %d", app.port)
 }

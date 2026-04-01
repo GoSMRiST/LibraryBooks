@@ -44,7 +44,7 @@ func (dataBase *DataBase) CreateTable(ctx context.Context) error {
 	return nil
 }
 
-func (dataBase *DataBase) AddBook(ctx context.Context, book core.Book) error {
+func (dataBase *DataBase) AddBook(ctx context.Context, book *core.Book) error {
 	var exists bool
 
 	err := dataBase.conn.QueryRow(ctx,
@@ -89,13 +89,13 @@ func (dataBase *DataBase) GetAllBooks(ctx context.Context) ([]core.Book, error) 
 	return books, nil
 }
 
-func (dataBase *DataBase) GetBookByID(ctx context.Context, bookID int) (core.Book, error) {
-	book := core.Book{}
+func (dataBase *DataBase) GetBookByID(ctx context.Context, bookID int) (*core.Book, error) {
+	book := &core.Book{}
 	strQuery := "SELECT id, author, title FROM books WHERE id = $1"
 
 	row := dataBase.conn.QueryRow(ctx, strQuery, bookID)
 	if err := row.Scan(&book.ID, &book.Author, &book.Title); err != nil {
-		return core.Book{}, core.ErrNotFound
+		return nil, core.ErrNotFound
 	}
 
 	return book, nil
@@ -109,7 +109,7 @@ func (dataBase *DataBase) CheckAvailabilityByAuthorTitle(ctx context.Context, re
 	err := dataBase.conn.QueryRow(ctx, strQuery, request.Author, request.Title).Scan(new(int))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return result, nil // книги нет
+			return result, core.ErrNotFound // книги нет
 		}
 
 		return result, err // другая ошибка

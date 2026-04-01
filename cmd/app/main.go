@@ -1,22 +1,19 @@
 package main
 
 import (
-	grpcapp "2/internal/app/grpc"
+	"2/internal/app"
 	"2/internal/config"
 	"2/internal/repository"
 	"2/internal/services/grpcserv"
 	"2/internal/services/restserv"
-	"2/internal/transport/rest"
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"github.com/GoSMRiST/protosLibary/gen/go/auth"
+	"google.golang.org/grpc"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
-	"time"
 )
 
 const (
@@ -28,21 +25,21 @@ const (
 func main() {
 	ctx := context.Background()
 
-	appConfig, err := config.InitConfig()
+	cfg, err := config.InitConfig()
 	if err != nil {
 		fmt.Println("fail to init config:", err)
 		return
 	}
 
-	logger := setupLogger(appConfig.LogLevel)
+	logger := setupLogger(cfg.LogLevel)
 
 	connString := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		appConfig.DBUser,
-		appConfig.DBPassword,
-		appConfig.DBHost,
-		appConfig.DBPort,
-		appConfig.DBName,
+		cfg.DBUser,
+		cfg.DBPassword,
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBName,
 	)
 
 	dataBase, err := repository.InitDataBase(ctx, connString)
@@ -51,76 +48,45 @@ func main() {
 		return
 	}
 
-	serviceDB := restserv.NewBookService(dataBase)
-	bookHandler := rest.NewBookHandler(serviceDB)
-
-	engine := gin.Default()
-	bookHandler.RegisterRoutes(engine)
-
-	srv := &http.Server{
-		Addr:         appConfig.HostAddress,
-		Handler:      engine,
-		ReadTimeout:  appConfig.ServTimeout,
-		WriteTimeout: appConfig.ServTimeout,
-		IdleTimeout:  appConfig.ServTimeout,
+	grpcAuth, err := grpc.Dial("localhost:44046", grpc.WithInsecure())
+	if err != nil {
+		logger.Error("failed to connect to auth service", "error", err)
 	}
 
-	// REST server
-	go func() {
-		logger.Info("REST server started",
-			slog.String("addr", appConfig.HostAddress),
-		)
-
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("REST server failed", slog.Any("error", err))
-			return
+	defer func() {
+		if err := grpcAuth.Close(); err != nil {
+			logger.Info("failed to close grpc auth service: ", err)
 		}
 	}()
 
-	// gRPC server
-	grpcService := grpcserv.NewGrpcBookService(dataBase)
-	port, err := strconv.Atoi(appConfig.GrpcPort)
-	if err != nil {
-		logger.Error("invalid grpc port", slog.Any("error", err))
-		return
-	}
+	grpcAuthClient := auth.NewAuthClient(grpcAuth)
 
-	grpcApp := grpcapp.New(logger, port, grpcService)
-	if grpcApp == nil {
-		logger.Error("failed to create gRPC server")
-		return
-	}
+	grpcSevice := grpcserv.NewGrpcBookService(dataBase)
+	restService := restserv.NewRestBookService(dataBase)
 
-	go func() {
-		logger.Info("gRPC server started", slog.Int("port", port))
-		grpcApp.MustRun()
-	}()
+	application := app.NewMainApp(logger, cfg, grpcSevice, restService, grpcAuthClient)
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go application.GRPCServer.MustRun()
+	go application.RESTServer.MustRun()
 
-	<-quit
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	logger.Info("shutdown signal received")
+	sign := <-stop
 
-	ctxShutdown, cancel := context.WithTimeout(ctx, 5*time.Second)
+	logger.Info("received signal", sign.String())
+
+	application.GRPCServer.Stop()
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, cfg.ServTimeout)
 	defer cancel()
 
-	// REST
-	if err := srv.Shutdown(ctxShutdown); err != nil {
-		logger.Error("REST shutdown error", slog.Any("error", err))
-	}
-
-	// gRPC
-	grpcApp.Stop()
-	logger.Info("gRPC server stopped")
-
-	// DB
-	if err := dataBase.CloseDataBase(ctx); err != nil {
-		logger.Error("failed to close database", slog.Any("error", err))
+	if err := application.RESTServer.Stop(ctxTimeout); err != nil {
+		logger.Error("failed to stop REST server", "error", err)
 		return
 	}
-	logger.Info("DataBase is closed")
+
+	logger.Info("rest server stopped")
 }
 
 func setupLogger(env string) *slog.Logger {

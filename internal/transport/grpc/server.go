@@ -1,4 +1,4 @@
-package book
+package grpc
 
 import (
 	"2/internal/core"
@@ -9,17 +9,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type BookService interface {
+type GrpcService interface {
 	CheckAvailabilityByAuthorTitle(ctx context.Context, request *core.CheckAvailabilityRequest) (*core.CheckAvailabilityResponse, error)
 }
 
 type Server struct {
 	book.UnimplementedBookServer
-	bookService BookService
+	grpcService GrpcService
 }
 
-func NewServer(gRPC *grpc.Server, bookService BookService) {
-	book.RegisterBookServer(gRPC, &Server{bookService: bookService})
+func NewServer(gRPC *grpc.Server, bookService GrpcService) {
+	book.RegisterBookServer(gRPC, &Server{grpcService: bookService})
 }
 
 func (serv *Server) CheckAvailability(ctx context.Context, request *book.CheckRequest) (*book.CheckResponse, error) {
@@ -28,7 +28,7 @@ func (serv *Server) CheckAvailability(ctx context.Context, request *book.CheckRe
 		Title:  request.Title,
 	}
 
-	resp, err := serv.bookService.CheckAvailabilityByAuthorTitle(ctx, coreRequest)
+	resp, err := serv.grpcService.CheckAvailabilityByAuthorTitle(ctx, coreRequest)
 	if err != nil {
 		st, ok := status.FromError(err)
 		if ok {
