@@ -3,7 +3,7 @@ module 2
 go 1.25.5
 
 require (
-	github.com/GoSMRiST/protosLibary v0.4.3
+	github.com/GoSMRiST/protosLibary v0.5.0
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/jackc/pgx/v5 v5.8.0
