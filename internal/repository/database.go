@@ -27,23 +27,6 @@ func (dataBase *DataBase) CloseDataBase(ctx context.Context) error {
 	return dataBase.conn.Close(ctx)
 }
 
-func (dataBase *DataBase) CreateTable(ctx context.Context) error {
-	strQuery := `
-		CREATE TABLE IF NOT EXISTS books (
-		id SERIAL PRIMARY KEY,
-		author TEXT,
-		title TEXT
-		);
-	`
-
-	_, err := dataBase.conn.Exec(ctx, strQuery)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (dataBase *DataBase) AddBook(ctx context.Context, book *core.Book) error {
 	var exists bool
 

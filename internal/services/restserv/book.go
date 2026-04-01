@@ -6,7 +6,6 @@ import (
 )
 
 type DbInterface interface {
-	CreateTable(ctx context.Context) error
 	AddBook(ctx context.Context, books *core.Book) error
 	GetAllBooks(ctx context.Context) ([]core.Book, error)
 	GetBookByID(ctx context.Context, bookID int) (*core.Book, error)
@@ -18,10 +17,6 @@ type RestBookService struct {
 
 func NewRestBookService(repo DbInterface) *RestBookService {
 	return &RestBookService{repo: repo}
-}
-
-func (s *RestBookService) CreateTable(ctx context.Context) error {
-	return s.repo.CreateTable(ctx)
 }
 
 func (s *RestBookService) AddBook(ctx context.Context, book *core.Book) error {
