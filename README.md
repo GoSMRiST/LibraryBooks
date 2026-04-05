@@ -127,16 +127,6 @@ curl -X POST http://localhost:8080/books \
 
 ---
 
-## 📌 Планы по развитию
-
-* [ ] Добавить Swagger
-* [ ] Написать тесты
-* [ ] Dockerize сервис
-* [ ] Логирование
-* [ ] Метрики
-
----
-
 ## 👤 Автор
 
 * GitHub: https://github.com/GoSMRiST
