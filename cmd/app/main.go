@@ -48,7 +48,7 @@ func main() {
 		return
 	}
 
-	grpcAuth, err := grpc.Dial("localhost:44046", grpc.WithInsecure())
+	grpcAuth, err := grpc.Dial("auth-service:50051", grpc.WithInsecure())
 	if err != nil {
 		logger.Error("failed to connect to auth service", "error", err)
 	}
