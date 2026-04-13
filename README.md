@@ -16,6 +16,7 @@
 * 🗄️ Работа с БД через repository слой
 * ⚙️ Конфигурация через env-файлы
 * 📦 Поддержка миграций базы данных
+* Добавлен Docker
 
 ---
 
@@ -26,6 +27,7 @@
 * **REST API**
 * **PostgreSQL**
 * **SQL migrations**
+* **Docker**
 
 ---
 
@@ -47,6 +49,7 @@
 ├── migrations/            # SQL миграции
 ├── go.mod
 └── go.sum
+└── Dockerfile
 ```
 
 ---
@@ -56,11 +59,11 @@
 Создайте `.env` файл:
 
 ```env
-DB_HOST=localhost
+DB_HOST=host.docker.internal
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=library
+DB_PASSWORD=DataBasePostgresPass
+DB_NAME=Books
 ```
 
 ---
@@ -94,6 +97,7 @@ go run cmd/app/main.go
 Пример эндпоинтов:
 
 * `GET /books` — получить список книг
+* `GET /books/:id` - получить книгу по id
 * `POST /books` — создать книгу
 
 ---
